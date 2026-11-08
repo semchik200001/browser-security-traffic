@@ -1,6 +1,7 @@
 """Анализ дампов «подслушивающего» прокси: виден ли пароль в байтах, ушедших в сеть.
 
-Запуск: python3 tools/analyze_sniff.py <пароль> <номер записи HTTP POST> <номер записи TLS> ...
+Запуск: python3 tools/analyze_sniff.py <пароль> --all              (сводка по всем дампам)
+        python3 tools/analyze_sniff.py <пароль> <номер> <номер> ...   (подробно по записям)
 """
 import sys
 import urllib.parse
@@ -46,9 +47,21 @@ def client_hello_info(body):
     return sni, ech
 
 
+def summary(variants):
+    """--all: одна строка на каждое перехваченное соединение."""
+    print(f"{'дамп':55} {'байт':>7}  пароль")
+    for f in sorted(DUMPS.glob("*.bin")):
+        data = f.read_bytes()
+        found = any(v in data for v in variants)
+        print(f"{f.name:55} {len(data):>7}  {'НАЙДЕН' if found else '-'}")
+
+
 def main():
     password = sys.argv[1].encode()
     variants = {password, urllib.parse.quote_plus(sys.argv[1]).encode()}
+    if sys.argv[2:] == ["--all"]:
+        summary(variants)
+        return
     for n in sys.argv[2:]:
         f = find(n)
         data = f.read_bytes()
